@@ -34,6 +34,17 @@ class ReservationQueue:
         else:
             print(f"{CSV_FILE} not found, starting with an empty queue.")
 
+    def save_reservations(self):
+        """Save current reservations to the CSV file."""
+        try:
+            with open(CSV_FILE, mode='w', newline='') as file:
+                writer = csv.writer(file)
+                for reservation in self.queue:
+                    writer.writerow([reservation.name, reservation.party_size, reservation.reservation_time])
+            print("Reservations saved successfully.")
+        except Exception as e:
+            print(f"Error saving reservations: {e}")
+
     def view_reservations(self):
         """Display all current reservations sorted by reservation time."""
         if not self.queue:
@@ -41,67 +52,75 @@ class ReservationQueue:
         else:
             # Sort reservations by datetime before displaying
             sorted_queue = sorted(self.queue, key=lambda res: datetime.strptime(res.reservation_time, '%m-%d-%Y %H:%M'))
-            
             for idx, reservation in enumerate(sorted_queue, start=1):
                 print(f"{idx}. {reservation}")
-
 
     def add_reservation(self, name, party_size, reservation_time):
         """Add a reservation to the queue."""
         try:
-            party_size = int(party_size)  # Validate party size as an integer
+            party_size = int(party_size)
+            if party_size <= 0:
+                raise ValueError("Party size must be a positive number.")
             self.queue.append(Reservation(name, party_size, reservation_time))
             print(f"Reservation added for {name} (Party Size: {party_size}) at {reservation_time}.")
             self.save_reservations()  # Save immediately after adding
-        except ValueError:
-            print("Error: Party size must be a number.")
+        except ValueError as e:
+            print(f"Error: {e}")
 
-    def view_reservations(self):
-        """Display all current reservations sorted by reservation time."""
-        if not self.queue:
-            print("No reservations available.")
-        else:
-            # Sort reservations by datetime before displaying
-            sorted_queue = sorted(self.queue, key=lambda res: datetime.strptime(res.reservation_time, '%m-%d-%Y %H:%M'))
-            
-            for idx, reservation in enumerate(sorted_queue, start=1):
-                print(f"{idx}. {reservation}")
-
-    def cancel_reservation(self):
-        """Cancel the first reservation in the queue (FIFO)."""
-        if not self.queue:
-            print("No reservations to cancel.")
-        else:
-            canceled = self.queue.pop(0)
-            print(f"Canceled reservation for {canceled.name} (Party Size: {canceled.party_size}) at {canceled.reservation_time}.")
+    def cancel_reservation(self, index):
+        """Cancel a reservation based on its index."""
+        try:
+            reservation = self.queue[index - 1]  # Adjusting index to 0-based
+            self.queue.remove(reservation)
+            print(f"Canceled reservation for {reservation.name} (Party Size: {reservation.party_size}) at {reservation.reservation_time}.")
             self.save_reservations()  # Save after canceling
+        except IndexError:
+            print("Invalid reservation index.")
 
     def update_reservation(self, index):
-        """Update an existing reservation based on index."""
-        if 0 <= index < len(self.queue):
-            reservation = self.queue[index]
+        """Update an existing reservation based on its index."""
+        try:
+            reservation = self.queue[index - 1]  # Adjusting index to 0-based
             print(f"Updating reservation for {reservation.name}")
-            
-            # Get new details
+
+            # Get new details with validation
             name = input(f"Enter new name (or press Enter to keep '{reservation.name}'): ") or reservation.name
-            party_size = input(f"Enter new party size (or press Enter to keep '{reservation.party_size}'): ") or reservation.party_size
-            reservation_time = input(f"Enter new reservation time (MM-DD-YYYY HH:MM) (or press Enter to keep '{reservation.reservation_time}'): ") or reservation.reservation_time
             
-            try:
-                party_size = int(party_size)  # Validate party size as an integer
-                # Validate date/time format
-                datetime.strptime(reservation_time, '%m-%d-%Y %H:%M')
-                self.queue[index] = Reservation(name, party_size, reservation_time)
-                print(f"Reservation updated for {name} (Party Size: {party_size}) at {reservation_time}.")
-                self.save_reservations()  # Save immediately after updating
-            except ValueError as e:
-                print(f"Error: {e}")
-        else:
+            # Loop to validate party size
+            while True:
+                party_size_input = input(f"Enter new party size (or press Enter to keep '{reservation.party_size}'): ") or reservation.party_size
+                try:
+                    party_size = int(party_size_input)
+                    if party_size <= 0:
+                        raise ValueError("Party size must be a positive number.")
+                    break  # Exit loop if valid
+                except ValueError:
+                    print("Invalid input. Please enter a valid positive number for party size.")
+
+            # Loop to validate reservation time
+            while True:
+                reservation_time_input = input(f"Enter new reservation time (MM-DD-YYYY HH:MM) (or press Enter to keep '{reservation.reservation_time}'): ") or reservation.reservation_time
+                try:
+                    # Validate the reservation time only if a new value is provided
+                    datetime.strptime(reservation_time_input, '%m-%d-%Y %H:%M')
+                    break  # Exit loop if valid
+                except ValueError:
+                    print("Error: Invalid date/time format. Use MM-DD-YYYY HH:MM.")
+
+            # Update the reservation
+            self.queue[index - 1] = Reservation(name, party_size, reservation_time_input)
+            print(f"Reservation updated for {name} (Party Size: {party_size}) at {reservation_time_input}.")
+
+            # Sort the queue by reservation time after updating
+            self.queue.sort(key=lambda res: datetime.strptime(res.reservation_time, '%m-%d-%Y %H:%M'))
+            self.save_reservations()  # Save immediately after updating
+        except IndexError:
             print("Invalid reservation index.")
 
     def exit_program(self):
         """Save reservations to CSV and exit the program."""
-        print("Reservations saved. Exiting program.")
+        self.save_reservations()  # Ensure all changes are saved
+        print("Exiting program.")
         exit()
 
 def main():
@@ -119,28 +138,38 @@ def main():
 
         if choice == '1':
             name = input("Enter customer name: ")
-            party_size = input("Enter party size: ")
-            reservation_time = input("Enter reservation time (MM-DD-YYYY HH:MM): ")
-            try:
-                # Validate the reservation time
-                datetime.strptime(reservation_time, '%m-%d-%Y %H:%M')
-                queue.add_reservation(name, party_size, reservation_time)
-            except ValueError:
-                print("Error: Invalid date/time format. Use MM-DD-YYYY HH:MM.")
+            
+            # Loop to validate party size
+            while True:
+                party_size = input("Enter party size (numbers only): ")
+                try:
+                    party_size = int(party_size)
+                    if party_size <= 0:
+                        raise ValueError("Party size must be a positive number.")
+                    break  # Exit loop if valid
+                except ValueError:
+                    print("Invalid input. Please enter a valid positive number for party size.")
+
+            # Loop to validate reservation time
+            while True:
+                reservation_time = input("Enter reservation time (MM-DD-YYYY HH:MM): ")
+                try:
+                    datetime.strptime(reservation_time, '%m-%d-%Y %H:%M')
+                    break  # Exit loop if valid
+                except ValueError:
+                    print("Error: Invalid date/time format. Use MM-DD-YYYY HH:MM.")
+
+            queue.add_reservation(name, party_size, reservation_time)
         elif choice == '2':
             queue.view_reservations()
         elif choice == '3':
-            queue.cancel_reservation()
+            queue.view_reservations()  # Show reservations before canceling
+            index = int(input("Enter the reservation number to cancel: "))
+            queue.cancel_reservation(index)
         elif choice == '4':
-            queue.view_reservations()
-            if queue.queue:
-                try:
-                    index = int(input("Enter the reservation number to update: ")) - 1
-                    queue.update_reservation(index)
-                except ValueError:
-                    print("Error: Please enter a valid number.")
-            else:
-                print("No reservations to update.")
+            queue.view_reservations()  # Show reservations before updating
+            index = int(input("Enter the reservation number to update: "))
+            queue.update_reservation(index)
         elif choice == '5':
             queue.exit_program()
         else:
