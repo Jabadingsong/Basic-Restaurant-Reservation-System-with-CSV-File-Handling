@@ -51,8 +51,8 @@ class ReservationQueue:
             print("No reservations available.")
         else:
             # Sort reservations by datetime before displaying
-            sorted_queue = sorted(self.queue, key=lambda res: datetime.strptime(res.reservation_time, '%m-%d-%Y %H:%M'))
-            for idx, reservation in enumerate(sorted_queue, start=1):
+            self.sorted_queue = sorted(self.queue, key=lambda res: datetime.strptime(res.reservation_time, '%m-%d-%Y %H:%M'))
+            for idx, reservation in enumerate(self.sorted_queue, start=1):
                 print(f"{idx}. {reservation}")
 
     def add_reservation(self, name, party_size, reservation_time):
@@ -68,24 +68,29 @@ class ReservationQueue:
             print(f"Error: {e}")
 
     def cancel_reservation(self, index):
-        """Cancel a reservation based on its index."""
+        """Cancel a reservation based on its index in the sorted list."""
         try:
-            reservation = self.queue[index - 1]  # Adjusting index to 0-based
-            self.queue.remove(reservation)
+            # Adjust the index to 0-based for sorted list usage
+            reservation = self.sorted_queue[index - 1]  
             print(f"Canceled reservation for {reservation.name} (Party Size: {reservation.party_size}) at {reservation.reservation_time}.")
+            # Remove the reservation from both the sorted queue and the original queue
+            self.queue.remove(reservation)
             self.save_reservations()  # Save after canceling
         except IndexError:
             print("Invalid reservation index.")
+        except Exception as e:
+            print(f"An error occurred: {e}")
 
     def update_reservation(self, index):
-        """Update an existing reservation based on its index."""
+        """Update an existing reservation based on its index in the sorted list."""
         try:
-            reservation = self.queue[index - 1]  # Adjusting index to 0-based
+            # Access the reservation from the sorted list
+            reservation = self.sorted_queue[index - 1]  # Adjusting index to 0-based
             print(f"Updating reservation for {reservation.name}")
 
             # Get new details with validation
             name = input(f"Enter new name (or press Enter to keep '{reservation.name}'): ") or reservation.name
-            
+
             # Loop to validate party size
             while True:
                 party_size_input = input(f"Enter new party size (or press Enter to keep '{reservation.party_size}'): ") or reservation.party_size
@@ -101,14 +106,19 @@ class ReservationQueue:
             while True:
                 reservation_time_input = input(f"Enter new reservation time (MM-DD-YYYY HH:MM) (or press Enter to keep '{reservation.reservation_time}'): ") or reservation.reservation_time
                 try:
-                    # Validate the reservation time only if a new value is provided
+                    # Validate the reservation time
                     datetime.strptime(reservation_time_input, '%m-%d-%Y %H:%M')
                     break  # Exit loop if valid
                 except ValueError:
                     print("Error: Invalid date/time format. Use MM-DD-YYYY HH:MM.")
 
-            # Update the reservation
-            self.queue[index - 1] = Reservation(name, party_size, reservation_time_input)
+            # Update the reservation in the sorted list
+            updated_reservation = Reservation(name, party_size, reservation_time_input)
+
+            # Find the reservation in the original queue and update it there as well
+            original_index = self.queue.index(reservation)
+            self.queue[original_index] = updated_reservation
+
             print(f"Reservation updated for {name} (Party Size: {party_size}) at {reservation_time_input}.")
 
             # Sort the queue by reservation time after updating
@@ -164,16 +174,27 @@ def main():
             queue.view_reservations()
         elif choice == '3':
             queue.view_reservations()  # Show reservations before canceling
-            index = int(input("Enter the reservation number to cancel: "))
-            queue.cancel_reservation(index)
+            while True:
+                try:
+                    index = int(input("Enter the reservation number to cancel: "))
+                    queue.cancel_reservation(index)
+                    break  # Exit loop if valid input
+                except ValueError:
+                    print("Invalid input. Please enter a valid reservation number.")
         elif choice == '4':
             queue.view_reservations()  # Show reservations before updating
-            index = int(input("Enter the reservation number to update: "))
-            queue.update_reservation(index)
+            while True:
+                try:
+                    index = int(input("Enter the reservation number to update: "))
+                    queue.update_reservation(index)
+                    break  # Exit loop if valid input
+                except ValueError:
+                    print("Invalid input. Please enter a valid reservation number.")
         elif choice == '5':
             queue.exit_program()
         else:
             print("Invalid choice. Please try again.")
+
 
 if __name__ == "__main__":
     main()
