@@ -137,7 +137,7 @@ def main():
     queue = ReservationQueue()
 
     while True:
-        print("\n--- Restaurant Reservation System ---")
+        print("\n========== Restaurant Reservation System ==========")
         print("1. Add Reservation")
         print("2. View Reservations")
         print("3. Cancel Reservation")
@@ -175,8 +175,12 @@ def main():
         elif choice == '3':
             queue.view_reservations()  # Show reservations before canceling
             while True:
+                input_str = input("Enter the reservation number to cancel (or press Enter to not cancel): ")
+                if input_str == '':  # Check if the user pressed Enter without entering anything
+                    print("Cancellation of the reservation cancellation process.")
+                    break  # Exit the loop if Enter is pressed
                 try:
-                    index = int(input("Enter the reservation number to cancel: "))
+                    index = int(input_str)
                     queue.cancel_reservation(index)
                     break  # Exit loop if valid input
                 except ValueError:
