@@ -93,7 +93,11 @@ class ReservationQueue:
 
             # Loop to validate party size
             while True:
-                party_size_input = input(f"Enter new party size (or press Enter to keep '{reservation.party_size}'): ") or reservation.party_size
+                party_size_input = input(f"Enter new party size (or press Enter to keep '{reservation.party_size}'): ") or str(reservation.party_size)
+                if party_size_input == '':  # Cancel update process if Enter is pressed
+                    print("Update process canceled.")
+                    return
+                
                 try:
                     party_size = int(party_size_input)
                     if party_size <= 0:
@@ -105,6 +109,10 @@ class ReservationQueue:
             # Loop to validate reservation time
             while True:
                 reservation_time_input = input(f"Enter new reservation time (MM-DD-YYYY HH:MM) (or press Enter to keep '{reservation.reservation_time}'): ") or reservation.reservation_time
+                if reservation_time_input == '':  # Cancel update process if Enter is pressed
+                    print("Update process canceled.")
+                    return
+                
                 try:
                     # Validate the reservation time
                     datetime.strptime(reservation_time_input, '%m-%d-%Y %H:%M')
@@ -188,8 +196,12 @@ def main():
         elif choice == '4':
             queue.view_reservations()  # Show reservations before updating
             while True:
+                index_input = input("Enter the reservation number to update (or press Enter to cancel): ")
+                if index_input == '':  # Check if the user pressed Enter without entering anything
+                    print("Update process canceled.")
+                    break  # Exit the loop if Enter is pressed
                 try:
-                    index = int(input("Enter the reservation number to update: "))
+                    index = int(index_input)
                     queue.update_reservation(index)
                     break  # Exit loop if valid input
                 except ValueError:
